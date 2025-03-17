@@ -1,0 +1,8 @@
+pdfplumber
+ultralytics==8.1.0
+boto3
+openpyxl
+uvicorn[standard]
+fastapi
+torch==1.11.0
+torchvision==0.12.0

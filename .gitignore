@@ -1,0 +1,6 @@
+__pycache__
+app/uploaded_pdfs/*
+!app/uploaded_pdfs/.gitkeep
+app/images
+app/best_mod.pt
+app/out_excel
