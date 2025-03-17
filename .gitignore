@@ -4,3 +4,4 @@ app/uploaded_pdfs/*
 app/images
 app/best_mod.pt
 app/out_excel
+.env_aws
