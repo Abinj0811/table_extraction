@@ -20,6 +20,8 @@ class ImageProcessor:
             ocr_data = pytesseract.image_to_osd(img)
             rotation = int(ocr_data.split("Rotate:")[1].split("\n")[0].strip())
 
+            print(444444444444444,rotation)
+
 
             if rotation in [90, 270]:  # Rotate only if 90° or 270°
                 

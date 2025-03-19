@@ -145,8 +145,7 @@ class TableDetector:
         for idx, (table_img, _) in enumerate(cropped_tables):
             table_path = os.path.join(output_folder, f"{filename}_table{idx+1}.png")
             cv2.imwrite(table_path, table_img)
-            
-
+            self.rot_img(table_path)
             saved_tables.append(table_path)
             print(f"✔ Saved table: {table_path}")
         
@@ -156,7 +155,7 @@ class TableDetector:
         for comp_img, _, class_name in cropped_components:
             comp_path = os.path.join(output_folder, f"{filename}_{class_name}.png")
             cv2.imwrite(comp_path, comp_img)
-            # self.rot_img(comp_path)
+            self.rot_img(comp_path)
             saved_components.append(comp_path)
             print(f"✔ Saved component: {comp_path}")
         
@@ -176,7 +175,12 @@ class TableDetector:
                 if file.endswith((".jpg", ".jpeg", ".png")):
                     image_path = os.path.join(root, file)
                     results[image_path] = self.process_image(image_path)
-        
+                    
+                    for png_file in results[image_path]['tables'] + results[image_path]['components']:
+                        if png_file.endswith(".png"):
+                            self.rot_img(png_file)
+                        
+
         return results
     
 

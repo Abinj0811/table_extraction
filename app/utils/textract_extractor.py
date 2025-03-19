@@ -295,25 +295,27 @@ class TextractExtractor:
             # Combine all detections
             all_detections = tables + makers_components
 
-            png_image_path = self.custom_extractor.process_each_image(all_detections)
+            if all_detections:
+
+                png_image_path = self.custom_extractor.process_each_image(all_detections)
+                
+
+                basename = os.path.basename(image_path)
             
+                filename = os.path.splitext(basename)[0]
 
-            basename = os.path.basename(image_path)
-        
-            filename = os.path.splitext(basename)[0]
-
-            excel_filename = os.path.join(image_folder, f"{filename}.xlsx")
-            writer = pd.ExcelWriter(excel_filename, engine='xlsxwriter')
-            for sub_image, extracted_data_list in png_image_path.items():
-                if extracted_data_list:
-                    if '_table' in os.path.basename(sub_image):
-                        await self.table_processor.process_image_data(sub_image, extracted_data_list, writer)
-                        # asyncio.create_task(self.table_processor.process_image_data(sub_image, extracted_data_list, writer))
-                    else:
-                        await self.maker_processor.process_image_data(sub_image, extracted_data_list, writer)
-                        # asyncio.create_task(self.maker_processor.process_image_data(sub_image, extracted_data_list, writer))
-                    
-            writer.close()
+                excel_filename = os.path.join(image_folder, f"{filename}.xlsx")
+                writer = pd.ExcelWriter(excel_filename, engine='xlsxwriter')
+                for sub_image, extracted_data_list in png_image_path.items():
+                    if extracted_data_list:
+                        if '_table' in os.path.basename(sub_image):
+                            await self.table_processor.process_image_data(sub_image, extracted_data_list, writer)
+                            # asyncio.create_task(self.table_processor.process_image_data(sub_image, extracted_data_list, writer))
+                        else:
+                            await self.maker_processor.process_image_data(sub_image, extracted_data_list, writer)
+                            # asyncio.create_task(self.maker_processor.process_image_data(sub_image, extracted_data_list, writer))
+                        
+                writer.close()
         
         pdf_img_dir = os.path.join(f'./app/images/{self.pdf_name}')
         out_pdfexcel_dir = './app/out_excel'
