@@ -278,6 +278,7 @@ class TextractExtractor:
                 "current_page": int(current_page),
                 "total_pages": int(self.total_pages),
                 "status": False,
+                "stage": "extraction",
                 "exc_link": 'null'
             })
 
@@ -334,6 +335,7 @@ class TextractExtractor:
                 "current_page": int(current_page),
                 "total_pages": int(self.total_pages),
                 "status": True,
+                "stage": "extraction",
                 "exc_link": base64_excel_data  # Encoded blob as a string
             })
 
@@ -344,6 +346,7 @@ class TextractExtractor:
                 "current_page": int(current_page),
                 "total_pages": int(self.total_pages),
                 "status": True,
+                "stage": "extraction",
                 "exc_link": 'null'
             })
         return out_pdf_excel

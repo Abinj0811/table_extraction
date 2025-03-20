@@ -33,7 +33,7 @@ class PDFToImages:
                         "-dNOPAUSE",
                         "-dBATCH",
                         "-sDEVICE=jpeg",
-                        "-r120",
+                        "-r300",
                         "-dUseCropBox",
                         f"-dFirstPage={page_num}",
                         f"-dLastPage={page_num}",

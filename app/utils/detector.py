@@ -9,18 +9,24 @@ import numpy as np
 from pathlib import Path
 from ultralytics import YOLO
 from app.utils.preprocessor import ImageProcessor
+import asyncio
+import re
+import logging
+from app.services.connection_manager import manager
 
 class TableDetector:
-    def __init__(self, table_model_path, makers_model_path):
+    def __init__(self, table_model_path, makers_model_path, pdf_path,total_page):
         """Initialize with both table and makers detection models."""
         self.table_model = YOLO(table_model_path)
         self.makers_model = YOLO(makers_model_path)
         self.makers_class_names = self.makers_model.names
         self.preprocess_image = ImageProcessor()
+        self.pdf_path = pdf_path
+        self.pdf_name = os.path.basename(pdf_path)
+        self.total_pages = total_page
         
         # Define class mappings for makers model
         self.makers_class_labels = {
-            2: "makers",
             3: "dwg_no",
             4: "title",
             5: "mk_name"
@@ -145,7 +151,8 @@ class TableDetector:
         for idx, (table_img, _) in enumerate(cropped_tables):
             table_path = os.path.join(output_folder, f"{filename}_table{idx+1}.png")
             cv2.imwrite(table_path, table_img)
-            self.rot_img(table_path)
+
+            
             saved_tables.append(table_path)
             print(f"✔ Saved table: {table_path}")
         
@@ -155,7 +162,7 @@ class TableDetector:
         for comp_img, _, class_name in cropped_components:
             comp_path = os.path.join(output_folder, f"{filename}_{class_name}.png")
             cv2.imwrite(comp_path, comp_img)
-            self.rot_img(comp_path)
+
             saved_components.append(comp_path)
             print(f"✔ Saved component: {comp_path}")
         
@@ -165,22 +172,51 @@ class TableDetector:
             'components': saved_components
         }
     
-    def process_folder(self, main_folder):
+
+    async def process_folder(self, main_folder):
         """Process all images in a folder for tables and makers components."""
         print(f"Scanning folder: {main_folder}\n")
         
         results = {}
+        image_files = []
+        
+        # First, collect all image files
         for root, _, files in os.walk(main_folder):
             for file in files:
                 if file.endswith((".jpg", ".jpeg", ".png")):
                     image_path = os.path.join(root, file)
-                    results[image_path] = self.process_image(image_path)
+                    image_files.append(image_path)
+        
+        # Sort image files to ensure they're processed in order
+        image_files.sort()
+        
+        # Process each image and send status updates
+        for index, image_path in enumerate(image_files):
+            # Extract page number from file name
+            file_name = os.path.basename(image_path)
+            page_match = re.search(r'(\d+)', file_name)
+            current_page = int(page_match.group(1)) if page_match else index + 1
+            
+            await manager.send_json({
+                "filename": self.pdf_name,
+                "current_page": int(current_page),
+                "total_pages": int(self.total_pages),
+                "status": False,
+                "stage": "detection",
+                "exc_link": 'null'
+            })
+        
+            # Process the image
+            results[image_path] = self.process_image(image_path)
+            
+            # Rotate any PNG files that were created
+            for png_file in results[image_path]['tables'] + results[image_path]['components']:
+                if png_file.endswith(".png"):
+                    self.rot_img(png_file)
                     
-                    for png_file in results[image_path]['tables'] + results[image_path]['components']:
-                        if png_file.endswith(".png"):
-                            self.rot_img(png_file)
-                        
-
+            # Allow other async tasks to run
+            await asyncio.sleep(0)
+        
         return results
     
 

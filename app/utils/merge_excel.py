@@ -8,6 +8,8 @@ import re
 import warnings
 import logging
 from openpyxl import load_workbook
+from io import BytesIO
+from PIL import Image as PILImage
 
 # Configure the logger for this module
 logger = logging.getLogger(__name__)
@@ -76,21 +78,22 @@ def append_excel_data_with_heading(sheet, df, heading, image_path):
 
     # Insert the corresponding image if it matches the heading
     makers_list = "dwg_no,mk_name,title"
-
     makers = makers_list.split(',')
     matches = bool([maker for maker in makers if re.search(re.escape(maker), os.path.basename(image_path))])
 
-    if matches:
-        if image_path and os.path.exists(image_path):
-            img = OpenpyxlImage(image_path)
-            # img.width, img.height = 500, 500
-            img.anchor = img_position
-            sheet.add_image(img)
+    if image_path and os.path.exists(image_path):
+        with PILImage.open(image_path) as pil_img:
+            # Resize to half the original size
+            width, height = pil_img.size
+            resized_img = pil_img.resize((width // 2, height // 2))
+            
+            # Convert to bytes
+            img_bytes = BytesIO()
+            resized_img.save(img_bytes, format='PNG')
+            img_bytes.seek(0)
 
-    else:
-        if image_path and os.path.exists(image_path):
-            img = OpenpyxlImage(image_path)
-            img.width, img.height = 500, 500
+            # Create an OpenpyxlImage from the resized bytes
+            img = OpenpyxlImage(img_bytes)
             img.anchor = img_position
             sheet.add_image(img)
 
@@ -112,8 +115,27 @@ def merge_excel_dedoc(pdf_img_dir, out_pdf_excel):
     images = read_jpg_images(pdf_img_dir)
     sorted_images = sorted(images, key=extract_page_number)
 
+    # for image_path in sorted_images:
+    #     print(444444444, image_path)
+    #     image_file_name = os.path.basename(image_path)
+    #     sheet_name, _ = os.path.splitext(image_file_name)
+    #     sheet = workbook.create_sheet(sheet_name)
+
+    #     # Find all Excel files that match the sheet name
+    #     matching_excel_files = [excel_file for excel_file in excel_files if sheet_name in excel_file]
+
+    #     for excel_file in matching_excel_files:
+    #         # Read all sheets from the Excel file
+    #         excel_data = pd.read_excel(excel_file, sheet_name=None)  # Read all sheets
+    #         for sheet_name_in_excel, df in excel_data.items():
+    #             heading = f"{sheet_name_in_excel}"
+    #             corresponding_png = png_images.get(heading, None)
+    #             append_excel_data_with_heading(sheet, df, heading, corresponding_png)
+
     for image_path in sorted_images:
-        print(444444444, image_path)
+        if image_path is None:
+            continue
+
         image_file_name = os.path.basename(image_path)
         sheet_name, _ = os.path.splitext(image_file_name)
         sheet = workbook.create_sheet(sheet_name)
@@ -123,11 +145,13 @@ def merge_excel_dedoc(pdf_img_dir, out_pdf_excel):
 
         for excel_file in matching_excel_files:
             # Read all sheets from the Excel file
-            excel_data = pd.read_excel(excel_file, sheet_name=None)  # Read all sheets
+            excel_data = pd.read_excel(excel_file, sheet_name=None)
             for sheet_name_in_excel, df in excel_data.items():
                 heading = f"{sheet_name_in_excel}"
                 corresponding_png = png_images.get(heading, None)
-                append_excel_data_with_heading(sheet, df, heading, corresponding_png)
+                if corresponding_png:
+                    append_excel_data_with_heading(sheet, df, heading, corresponding_png)
+
 
     workbook.save(out_pdf_excel)
     workbook = load_workbook(out_pdf_excel)

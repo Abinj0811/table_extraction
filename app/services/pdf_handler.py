@@ -1,3 +1,4 @@
+
 # services/pdf_handler.py
 from app.utils.pdf_to_images import PDFToImages
 from app.utils.table_detection import TableDetection
@@ -40,15 +41,15 @@ class PDFHandler:
             logger.error(f"Error converting PDF to images: {e}")
             raise
         
-    def detect_tables(self):
+    async def detect_tables(self):
         if self.image_dir is None:
             raise ValueError("Images not generated. Run convert_pdf_to_images first.")
         
         # table_detector = TableDetection("/home/thinkpalm/MachineLearning/Table_extraction/app/best_mod.pt")  # Update with your YOLO model path
         # detected_tables = table_detector.detect_tables_in_directory(self.image_dir)
-        table_detector = TableDetector("app/models/best_tables.pt", "app/models/best_makers.pt")
+        table_detector = TableDetector("app/models/best_tables.pt", "app/models/best_makers.pt",self.pdf_name,self.total_pages)
 
-        detected_tables = table_detector.process_folder(self.image_dir)
+        detected_tables =await table_detector.process_folder(self.image_dir)
 
 
         # Log the detected tables structure to verify its format
@@ -78,7 +79,7 @@ class PDFHandler:
             await self.async_convert_pdf_to_images()
             # image_files_list = self.convert_pdf_to_images()
             if not self.pages_to_show:
-                table_bbs_dict = self.detect_tables()
+                table_bbs_dict = await self.detect_tables()
                 # Check detection results
                 if table_bbs_dict:
                     exc_path = await self.do_textract(table_bbs_dict, yolo_done=True)
@@ -88,7 +89,7 @@ class PDFHandler:
                     exc_path = None
             else:
                 sorted_image_files = sorted(
-                    image_files_list,
+                    self.image_files_list,
                     key=lambda x: int(os.path.basename(x).split('_')[-1].split('.')[0])
                 )
                 exc_path = await self.do_textract(sorted_image_files, yolo_done=False)
@@ -117,25 +118,48 @@ async def process_multiple_pdfs(pdf_paths):
 
 
 # Example usage
-if __name__ == "__main__":
-    try:
-        pdf_handler = PDFHandler("/home/thinkpalm/vs_projects/table_extraction/TPMAIS10/app/uploaded_pdfs/HF27-LIFE BOAT.pdf")
-        image_files_list = pdf_handler.convert_pdf_to_images()
+# if __name__ == "__main__":
+#     try:
+#         pdf_handler = PDFHandler("/home/thinkpalm/vs_projects/table_extraction/TPMAIS10/app/uploaded_pdfs/HF27-LIFE BOAT.pdf")
+#         image_files_list = pdf_handler.convert_pdf_to_images()
 
-        if not pdf_handler.pages_to_show:
-            table_bbs_dict = pdf_handler.detect_tables()
-            # print(table_bbs_dict)
-            # Check detection results
-            if table_bbs_dict:
-                print(1111111111111111111111111111111111111)
-                exc_path = pdf_handler.do_textract(table_bbs_dict, yolo_done=True)
+#         if not pdf_handler.pages_to_show:
+#             table_bbs_dict = pdf_handler.detect_tables()
+#             # print(table_bbs_dict)
+#             # Check detection results
+#             if table_bbs_dict:
+#                 print(1111111111111111111111111111111111111)
+#                 exc_path = pdf_handler.do_textract(table_bbs_dict, yolo_done=True)
+#             else:
+#                 logging.info("No tables detected.")
+#         else:
+#             sorted_image_files = sorted(
+#                 image_files_list,
+#                 key=lambda x: int(os.path.basename(x).split('_')[-1].split('.')[0])
+#             )
+#             exc_path = pdf_handler.do_textract(sorted_image_files, yolo_done=False)
+#     except Exception as e:
+#         logging.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    async def main():
+        try:
+            pdf_handler = PDFHandler("/home/thinkpalm/vs_projects/table_extraction/TPMAIS10/app/uploaded_pdfs/HF27-LIFE BOAT.pdf")
+            await pdf_handler.async_convert_pdf_to_images()
+
+            if not pdf_handler.pages_to_show:
+                table_bbs_dict = await pdf_handler.detect_tables()
+                if table_bbs_dict:
+                    exc_path = await pdf_handler.do_textract(table_bbs_dict, yolo_done=True)
+                else:
+                    logging.info("No tables detected.")
             else:
-                logging.info("No tables detected.")
-        else:
-            sorted_image_files = sorted(
-                image_files_list,
-                key=lambda x: int(os.path.basename(x).split('_')[-1].split('.')[0])
-            )
-            exc_path = pdf_handler.do_textract(sorted_image_files, yolo_done=False)
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
+                sorted_image_files = sorted(
+                    pdf_handler.image_files_list,
+                    key=lambda x: int(os.path.basename(x).split('_')[-1].split('.')[0])
+                )
+                exc_path = await pdf_handler.do_textract(sorted_image_files, yolo_done=False)
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
+
+    asyncio.run(main())
